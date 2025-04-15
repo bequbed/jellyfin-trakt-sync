@@ -1,77 +1,147 @@
+# Jellyfin-to-Trakt Sync (Non-Admin)
 
-# Jellyfin-to-Trakt Sync
+Do you use Jellyfin but don't have administrator access to the server? Do you also use Trakt.tv to keep track of everything you watch? This script is for you!
 
-This project creates an automated system for users who don't have admin access to a Jellyfin server but want to sync their watched content to Trakt.tv. The solution is a Python script that runs on your own server, authenticates with both Jellyfin and Trakt, and syncs your watch history periodically.
+This project provides a Python script that you can run on your own computer or server. It automatically syncs your personal watch history from Jellyfin directly to your Trakt.tv profile, without needing any special permissions on the Jellyfin server itself.
 
-## Setup Steps
+## How it Works
 
-### 1. Environment Setup
-
-
-### 2. Script Creation
-
-We created a Python script (`jellyfin_trakt_sync.py`) with the following components:
-
-1. **Configuration Management**: Loads/saves user settings and maintains a cache of synced items
-2. **Jellyfin Integration**: Authenticates with Jellyfin and retrieves watched items
-3. **Trakt Integration**: Handles OAuth authentication and scrobbles content
-4. **Syncing Logic**: Converts Jellyfin items to Trakt format and syncs them
-
-### 3. Script Configuration
-
-The script creates a `config.json` file on first run that you must edit to include:
-
-
-### 4. Trakt API Registration
-
-1. Create a Trakt application at https://trakt.tv/oauth/applications
-2. Set the name to "Jellyfin Sync" (or your preferred name)
-3. Set the redirect URI to `urn:ietf:wg:oauth:2.0:oob`
-4. Enable permission for `/scrobble`
-5. Save the Client ID and Client Secret for your config file
-
-### 5. Authentication Process
-
-When you run the script for the first time after configuration:
-
-1. It authenticates with Jellyfin using your credentials
-2. It initiates the Trakt device OAuth flow:
-   - Displays a URL to visit and a code to enter
-   - Waits for you to authorize the application
-   - Stores the access and refresh tokens for future use
-
-### 6. Troubleshooting Steps
-
-We encountered and fixed several issues:
-
-1. **User ID Resolution**: Changed from `client.auth.user_id` to `client.auth.config.data['auth.user_id']`
-2. **API Compatibility**: Replaced `client.jellyfin.get_items()` with direct API requests
-3. **Authentication Issues**: Ensured the Jellyfin URL format was correct (no trailing slash)
-4. **Trakt Library Problems**: Created direct API calls instead of relying on the `trakt.py` library
-
-### 7. Final Script Structure
-
-The script follows this process flow:
-
-1. Load configuration and cache
-2. Authenticate with Jellyfin and Trakt
-3. Retrieve recently played items from Jellyfin
-4. Convert items to Trakt format
-5. Check which items need to be synced (not in cache)
-6. Scrobble items to Trakt
-7. Update cache with successfully synced items
-8. Log results
-
-### 8. Automation Setup
-
-To automate the script to run every 15 minutes:
-
+The script logs into your Jellyfin account, fetches your recently watched movies and episodes, and then securely logs into your Trakt.tv account to "scrobble" (add) that watch history. It runs periodically in the background, ensuring your Trakt profile stays up-to-date automatically.
 
 ## Key Features
 
-1. **Non-Admin Compatible**: Works with regular Jellyfin user accounts
-2. **Automatic Token Refresh**: Handles Trakt OAuth token refresh automatically
-3. **Cache System**: Prevents duplicate syncing of content
-4. **Detailed Logging**: Maintains logs for troubleshooting
-5. **Direct API Calls**: Uses direct API calls for better compatibility
+* **No Admin Needed:** Works perfectly with a standard Jellyfin user account.
+* **Automatic Syncing:** Set it up once and it runs in the background (using cron or Task Scheduler).
+* **Secure Authentication:** Uses standard OAuth for Trakt.tv and your Jellyfin login. Handles token refreshing automatically.
+* **Prevents Duplicates:** Keeps track of what's already synced to avoid adding the same item multiple times.
+* **Configurable:** You can set how often it syncs and how far back it checks your history.
 
+## Prerequisites
+
+Before you start, make sure you have:
+
+1.  **A Place to Run It:** A computer, Raspberry Pi, or server that is generally always on and can run Python scripts.
+2.  **Python:** Python 3 installed on that machine.
+3.  **Jellyfin Access:** Your Jellyfin server's web address (URL), your username, and your password.
+4.  **Trakt.tv Account:** A free account on Trakt.tv.
+
+## Setup Instructions
+
+Follow these steps to get the sync script running:
+
+**1. Get the Code:**
+
+* Download the script files (`jellyfin_trakt_sync.py`, `requirements.txt`, `config.json.example`, `run_sync.sh`) into a dedicated directory on your machine.
+* *Alternatively, if familiar with Git:* Clone the repository:
+    ```bash
+    git clone <repository_url>
+    cd jellyfin-trakt-sync
+    ```
+
+**2. Set Up the Python Environment:**
+
+* Open a terminal or command prompt in the project directory.
+* **Create a virtual environment:** This keeps the script's dependencies separate.
+    ```bash
+    python3 -m venv venv
+    ```
+* **Activate the virtual environment:**
+    * On Linux or macOS: `source venv/bin/activate`
+    * On Windows: `.\venv\Scripts\activate`
+    (You should see `(venv)` appear at the beginning of your command prompt line).
+* **Install required packages:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+    (This installs `jellyfin-apiclient-python` and `requests`).
+
+**3. Register a Trakt Application:**
+
+* You need to tell Trakt about your script so it can get permission to scrobble for you.
+* Go to `https://trakt.tv/oauth/applications/new` in your web browser (log in if needed).
+* Fill out the form:
+    * **Name:** Give it a descriptive name, like `My Jellyfin Sync` or `Home Server Sync`.
+    * **Redirect URI:** Enter exactly `urn:ietf:wg:oauth:2.0:oob`
+    * **Permissions:** Check the box next to `/scrobble`. Leave others unchecked unless you know you need them.
+* Click "Save App".
+* **IMPORTANT:** You will now see a **Client ID** and a **Client Secret**. Copy these down securely – you'll need them in the next step. *Treat the Client Secret like a password!*
+
+**4. Configure the Script:**
+
+* Find the `config.json.example` file in the project directory.
+* **Rename or copy** it to `config.json`.
+* **Edit `config.json`** using a text editor and fill in your details:
+
+    ```json
+    {
+        "jellyfin": {
+            "server_url": "https://your-jellyfin-server.com",  // <-- Replace with your server's address. NO trailing slash / !
+            "username": "your-jellyfin-username",         // <-- Replace with your Jellyfin username
+            "password": "your-jellyfin-password",         // <-- Replace with your Jellyfin password
+            "device_id": "jellyfin-sync-script-unique-name" // <-- Can leave as is, or make it unique
+        },
+        "trakt": {
+            "client_id": "YOUR_TRAKT_CLIENT_ID_HERE",     // <-- Paste the Client ID from Step 3
+            "client_secret": "YOUR_TRAKT_CLIENT_SECRET_HERE", // <-- Paste the Client Secret from Step 3
+            "access_token": null,                       // <-- Leave as null
+            "refresh_token": null,                      // <-- Leave as null
+            "token_expires_at": 0                       // <-- Leave as 0
+        },
+        "sync": {
+            "days_to_look_back": 7,                       // How many days of history to check each time (7 is usually fine)
+            "last_sync": 0                              // Leave as 0, the script manages this
+        }
+    }
+    ```
+* Save the `config.json` file.
+
+**5. First Run & Trakt Authentication:**
+
+* Make sure your virtual environment is still active (`(venv)` should be visible in your terminal).
+* Run the script manually for the first time:
+    ```bash
+    python3 jellyfin_trakt_sync.py
+    ```
+* The script will:
+    * Attempt to connect to your Jellyfin server using the credentials you provided.
+    * If successful, it will initiate the Trakt authentication. It will print a message like:
+        `Please go to https://trakt.tv/activate and enter the code: XXXXXXXX`
+* **Action Required:** Open the `https://trakt.tv/activate` URL in your browser. Log in to Trakt if prompted. Enter the exact code displayed in your terminal. Click "Continue" and then "Allow" or "Authorize" to grant the script permission to scrobble to your account.
+* Once you authorize it, the script running in your terminal will detect this, securely save the necessary tokens to your `config.json` file, and perform the first sync.
+* Check the script's output for "Sync complete" or any error messages.
+
+**6. Automate the Sync (Recommended):**
+
+You don't want to run the script manually all the time. Here's how to automate it:
+
+* **Use the Wrapper Script:** The included `run_sync.sh` script simplifies running the sync within its environment. You might need to edit the `cd` command inside it if your project directory isn't `~/jellyfin-trakt-sync`.
+* **Make it Executable (Linux/macOS):**
+    ```bash
+    chmod +x run_sync.sh
+    ```
+* **Schedule it:**
+    * **On Linux/macOS (using cron):**
+        * Edit your user's crontab: `crontab -e`
+        * Add a line to run the script periodically. To run every 15 minutes:
+            ```cron
+            */15 * * * * /full/path/to/your/jellyfin-trakt-sync/run_sync.sh >> /full/path/to/your/jellyfin-trakt-sync/cron.log 2>&1
+            ```
+            *(Make sure to replace `/full/path/to/your/jellyfin-trakt-sync/` with the actual absolute path to the directory where you placed the script)*. This line also saves the script's output to `cron.log` in the same directory, which is helpful for checking if it's working.
+        * Save and close the crontab editor.
+    * **On Windows (using Task Scheduler):**
+        * Open Task Scheduler.
+        * Create a new Basic Task.
+        * Set a trigger (e.g., Daily, repeat task every 15 minutes).
+        * Set the action to "Start a program".
+        * Program/script: Point it to your Python executable (e.g., `C:\path\to\your\project\venv\Scripts\python.exe`).
+        * Add arguments: `jellyfin_trakt_sync.py`
+        * Start in: Set this to the full path of your project directory (e.g., `C:\path\to\your\project\`).
+
+## Troubleshooting Tips
+
+* **Jellyfin URL Error:** Double-check the `server_url` in `config.json`. Make sure it's correct and **does not** have a slash (`/`) at the very end.
+* **Authentication Failed:** Verify your Jellyfin username/password and Trakt Client ID/Secret in `config.json`.
+* **Script Not Running (Automation):** Check the log file (`cron.log` or Task Scheduler history) for errors. Ensure the paths in your cron job or Task Scheduler task are correct. Make sure the virtual environment is correctly handled (the `run_sync.sh` script helps with this on Linux/macOS).
+* **Trakt Auth Issues:** If Trakt authentication repeatedly fails, try deleting the token lines (`access_token`, `refresh_token`, `token_expires_at`) from `config.json` and running the script manually (`python3 jellyfin_trakt_sync.py`) to re-do the authorization flow (Step 5).
+
+Enjoy having your Jellyfin watch history automatically synced to Trakt!
