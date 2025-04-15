@@ -1,8 +1,6 @@
 
 # Jellyfin-to-Trakt Sync
 
-## Project 
-
 This project creates an automated system for users who don't have admin access to a Jellyfin server but want to sync their watched content to Trakt.tv. The solution is a Python script that runs on your own server, authenticates with both Jellyfin and Trakt, and syncs your watch history periodically.
 
 ## Setup Steps
