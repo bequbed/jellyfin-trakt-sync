@@ -1,0 +1,22 @@
+// config.json.example
+// Copy this file to config.json and fill in your actual details.
+// Do NOT commit your actual config.json file with secrets to Git.
+{
+    "jellyfin": {
+        "server_url": "https://jellyfin.example.com",   // Replace with your Jellyfin server URL (NO trailing slash!)
+        "username": "YOUR_JELLYFIN_USERNAME",          // Replace with your Jellyfin username
+        "password": "YOUR_JELLYFIN_PASSWORD",          // Replace with your Jellyfin password
+        "device_id": "jellyfin-trakt-sync-v1"        // A unique name for this script instance (can usually be left as is)
+    },
+    "trakt": {
+        "client_id": "YOUR_TRAKT_CLIENT_ID",           // Replace with your Trakt Application Client ID
+        "client_secret": "YOUR_TRAKT_CLIENT_SECRET",       // Replace with your Trakt Application Client Secret
+        "access_token": null,                          // Leave as null - the script will fill this after first auth
+        "refresh_token": null,                         // Leave as null - the script will fill this
+        "token_expires_at": 0                          // Leave as 0 - the script will fill this
+    },
+    "sync": {
+        "days_to_look_back": 7,                          // How many days of watch history to check on each sync run
+        "last_sync": 0                                 // Leave as 0 - the script manages this timestamp
+    }
+}
