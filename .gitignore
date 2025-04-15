@@ -1,0 +1,24 @@
+# .gitignore
+
+# Ignore the user's actual configuration file containing secrets
+config.json
+
+# Ignore Python virtual environment folder
+venv/
+/venv/
+
+# Ignore Python bytecode and caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore log files (like the cron.log we might set up)
+*.log
+
+# Optional: Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Optional: Ignore IDE/editor specific folders
+.vscode/
+.idea/
